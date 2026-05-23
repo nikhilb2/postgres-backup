@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+spec:
+  schedule: "0 2 * * *"          # runs daily at 02:00 UTC
+  concurrencyPolicy: Forbid       # skip if previous job is still running
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: pg-backup
+              image: postgres:16-alpine
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  apk add --no-cache bash curl && \
+                  curl -fsSL https://raw.githubusercontent.com/nikhilb2/postgres-backup/main/pg_dump_all.sh \
+                    -o /backup/pg_dump_all.sh && \
+                  chmod +x /backup/pg_dump_all.sh && \
+                  BACKUP_DIR=/backup/dumps /backup/pg_dump_all.sh
+              envFrom:
+                - secretRef:
+                    name: postgres-backup-creds
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backup
+          volumes:
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: postgres-backup-pvc
