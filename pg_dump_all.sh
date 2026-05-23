@@ -8,8 +8,9 @@
 #   PGPASSWORD  — PostgreSQL password
 #
 # Optional environment variables:
-#   BACKUP_DIR  — Directory to write dumps into (default: ./backups)
-#   DUMP_FORMAT — pg_dump format: plain|custom|directory|tar (default: custom)
+#   BACKUP_DIR      — Directory to write dumps into (default: ./backups)
+#   DUMP_FORMAT     — pg_dump format: plain|custom|directory|tar (default: custom)
+#   RETENTION_DAYS  — Number of daily backups to keep (default: 7)
 
 set -euo pipefail
 
@@ -25,6 +26,7 @@ export PGPASSWORD  # makes it available to child processes (pg_dump / psql)
 
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 DUMP_FORMAT="${DUMP_FORMAT:-custom}"
+RETENTION_DAYS="${RETENTION_DAYS:-7}"
 
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 TARGET_DIR="${BACKUP_DIR}/${TIMESTAMP}"
@@ -115,5 +117,17 @@ done <<< "${DATABASES}"
 echo ""
 echo "==> Done. ${SUCCESS} succeeded, ${FAILURE} failed."
 echo "==> Dumps written to: ${TARGET_DIR}"
+
+# ---------------------------------------------------------------------------
+# Retention: remove backup directories older than RETENTION_DAYS days
+# ---------------------------------------------------------------------------
+echo ""
+echo "==> Removing backups older than ${RETENTION_DAYS} days from ${BACKUP_DIR} ..."
+find "${BACKUP_DIR}" -mindepth 1 -maxdepth 1 -type d -mtime +$(( RETENTION_DAYS - 1 )) \
+  | sort | while IFS= read -r OLD_DIR; do
+      echo "  Deleting ${OLD_DIR}"
+      rm -rf "${OLD_DIR}"
+    done
+echo "==> Retention cleanup done."
 
 [[ "${FAILURE}" -eq 0 ]]
