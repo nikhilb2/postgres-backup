@@ -11,12 +11,13 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 2
+      ttlSecondsAfterFinished: 3600   # keep pod logs accessible for 1 hour after completion/failure
       template:
         spec:
           restartPolicy: OnFailure
           containers:
             - name: pg-backup
-              image: postgres:16-alpine
+              image: postgres:17-alpine
               command: ["/bin/sh", "-c"]
               args:
                 - |
