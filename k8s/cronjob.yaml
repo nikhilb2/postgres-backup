@@ -2,6 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: postgres-backup
+  namespace: db
 spec:
   schedule: "0 2 * * *"          # runs daily at 02:00 UTC
   concurrencyPolicy: Forbid       # skip if previous job is still running
